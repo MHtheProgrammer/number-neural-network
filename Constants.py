@@ -7,8 +7,12 @@ WEIGHTS_AND_BIASES_CSV_LOCATION = "./weights-and-biases.csv"
 
 # MNIST dataset has a 28x28 pixel image, 784 pixels total
 INPUT_NODE_COUNT = 784
+
 # 10 possible output for digits 0-9
 OUTPUT_NODE_COUNT = 10
 
+# Hyper parameters
 HIDDEN_LAYER_COUNT = 2
 NODES_PER_HIDDEN_LAYER = 16
+BATCH_SIZE = 1
+LEARNING_RATE = 0.0001
