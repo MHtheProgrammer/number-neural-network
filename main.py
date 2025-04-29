@@ -2,11 +2,38 @@ import numpy as np
 from MLP import MLP
 
 
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-1.0 * x))
+    
+    
+def sig_prime(input: np.ndarray):
+    '''
+    Not actually using sigmoid function, since sig(z) is activation, we already have those
+    calculated. so just so a * (1 - a) and pass in activations vector
+    '''
+    if input.ndim == 1:
+        ones = np.full(input.size, 1)
+        ret = input * (ones - input)
+        return ret
+    elif input.ndim == 2:
+        ret = np.zeros_like(input)
+        for i in range(input.shape[0]):
+            ones = np.full(input[0].size, 1)
+            vec = input[i] * (ones - input[i])
+            ret[i] = vec
+        return ret
+    else:
+        print("Error, cannot pass array with more than 2 dimensions into sig_prime function")
+        exit(1)
+
 def main():
     mlp = MLP(False)
     mlp.train()
 
+
+
 main()
+
 
 '''
 def calc_dC_dW(self, L, j, k):
