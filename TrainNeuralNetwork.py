@@ -21,19 +21,25 @@ test_data = idx2numpy.convert_from_file("./MNIST_datasets/t10k-images-idx3-ubyte
 test_labels = idx2numpy.convert_from_file("./MNIST_datasets/t10k-labels-idx1-ubyte")
 
 # Resize dataset into n by 784, and convert values from 0-255 to 0-1
-train_data = (train_data.reshape(60000, -1).astype('float')) /255
-test_data = (test_data.reshape(10000, -1).astype('float')) /255
+train_data = (train_data.reshape(60000, -1).astype('float32')) /255
+test_data = (test_data.reshape(10000, -1).astype('float32')) /255
 
 # One hot encode the labels
 '''
 Takes array of labels ex: [1, 3, 5, ...] and one hot encodes them -> [[0, 1, 0, ...], [0, 0, 0, 1, 0, ...], [...], ...]
 '''
 def one_hot_encode(x: np.ndarray, num_classes: int):
-        ret_arr = np.zeros((x.size, num_classes))
-        ret_arr[np.arange(x.size), x] = 1
+        ret_arr = np.zeros((x.size, num_classes), dtype=np.float32)
+        ret_arr[np.arange(x.size), x] = 1.0
         return ret_arr
 
 train_labels = one_hot_encode(train_labels, LAYER_SIZES[-1])
+
+# Convention is to use shape (feature_size, num_samples) for data 
+train_data = train_data.T
+test_data = test_data.T
+# and shape (num_classes, num_samples) for labels
+train_labels = train_labels.T
 
 
 # ================= CREATE THE MLP =================
@@ -53,12 +59,12 @@ def relu_derivative(x: np.ndarray):
 
 def soft_max(x: np.ndarray):
     '''
-    Softmax takes in a 2-d array of shape (num_samples, num_classes) and performs
+    Softmax takes in a 2-d array of shape (num_classes, num_samples) and performs
     softmax on the matrix row-by-row
     '''
-    x_max = np.max(x, axis=1, keepdims=True) ## keepdims gives us (n,1) instead of (n,)
+    x_max = np.max(x, axis=0, keepdims=True) ## keepdims gives us (1,n) instead of (n,)
     e_x = np.exp(x - x_max) ## subtract x_max here to prevent overflow / preserve numerical stability (does not affect the softmax math)
-    return e_x / np.sum(e_x, axis=1, keepdims=True)
+    return e_x / np.sum(e_x, axis=0, keepdims=True)
 
 def initialize_model_parameters(layer_sizes: list):
     '''
@@ -69,7 +75,7 @@ def initialize_model_parameters(layer_sizes: list):
     '''
     parameters = {}
     
-    for l in range (1, layer_sizes): ## Every layer needs weights and biases except input
+    for l in range (1, len(layer_sizes)): ## Every layer needs weights and biases except input
         input_size = layer_sizes[l-1]
         output_size = layer_sizes[l]
         parameters[f'W{l}'] = np.random.randn(output_size, input_size) * np.sqrt(2. / input_size) ## HE normal initialization
@@ -217,6 +223,10 @@ def export_parameters_to_file(parameters: dict, filepath: str):
             
 # ================ RUN THE TRAINING ================
 
+print(train_data.shape)
+print(test_data.shape)
+print(train_labels.shape)
+print(test_labels.shape)
 # Create and tweak our model parameters
 parameters = initialize_model_parameters(LAYER_SIZES)
 parameters = run_gradient_descent(train_data, train_labels, parameters, LAYER_SIZES, EPOCHS, BATCH_SIZE, LEARNING_RATE)
