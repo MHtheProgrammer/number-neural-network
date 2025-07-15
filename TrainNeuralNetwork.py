@@ -5,9 +5,10 @@ import json
 # ================ HYPER PARAMETERS ================
 # Right at the top for easy access
 LAYER_SIZES = [784, 16, 16, 10] ## The num of nodes in each layer, first is input last is output
-EPOCHS = 3
+MAX_EPOCHS = 350
+EARLY_STOP_EPOCH_COUNT = 100 ## If this many epochs pass without improvement to loss, then stop training
 BATCH_SIZE = 64
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
 EXPORT_FILE_PATH = "./model_parameters.json"
 
 # ================ LOAD THE DATASET ================
@@ -159,27 +160,32 @@ def update_parameters(parameters: dict, gradients: dict, learning_rate: float):
         parameters[key] -= learning_rate * gradients['d' + key] ## EX: W1 -= learning_rate * dW1
     return parameters
 
-def run_gradient_descent(X: np.ndarray, Y: np.ndarray, parameters: dict, layer_sizes: list, epochs: int, batch_size: int, learning_rate: float):
+def run_gradient_descent(X: np.ndarray, Y: np.ndarray, parameters: dict, layer_sizes: list, max_epochs: int, batch_size: int, learning_rate: float, early_stop: int):
     '''
     Takes the following arguments
     X: the training data flattened out into 2d matrix
     Y: labels for training data one hot encoded
     parameters: dict of model parameters {W1, b1, etc}
     layer_sizes: list of layer sizes
-    epochs: number of times to run through training data
+    max_epochs: number of times to run through training data
     batch_size: num of samples to use for each iteration of learning
     learning_rate: constant value for learning rate
+    early_stop: num of epochs where training has to be ineffective to trigger early stop
 
     This function will take the parameters and run gradient descent to start tweaking the parameters.
     Returns the updated parameters dict
     '''
     num_samples = X.shape[1]
+    epochs_without_improvement = 0
+    best_loss = 10000.0 ## arbitrarly sufficient large value
     
-    for epoch in range(epochs):
+    for epoch in range(max_epochs):
         # Randomize order so we get different batches every epoch
         random_order = np.random.permutation(num_samples)
         X_shuffled = X[:, random_order]
         Y_shuffled = Y[:, random_order]
+        
+        epoch_loss = 0
         
         # Split data into batches
         for batch_start in range(0, num_samples, batch_size):
@@ -192,9 +198,24 @@ def run_gradient_descent(X: np.ndarray, Y: np.ndarray, parameters: dict, layer_s
             gradients = backward_propagation(X_batch, Y_batch, parameters, cache, layer_sizes)
             parameters = update_parameters(parameters, gradients, learning_rate)
             
-            # Compute and print the loss to console so we can see if its learning (debug purposes)
+            # Compute the loss and add it to loss in this epoch
             loss = compute_loss(Y_hat, Y_batch)
-            print(f'Loss on epoch {epoch} batch {batch_start/batch_size}= {loss}')
+            epoch_loss += loss * X_batch.shape[1] ## Accounts for diff sized final batch
+        
+        # Check if loss is decreasing this epoch
+        epoch_loss /= num_samples ## Average loss across samples
+        if epoch_loss < (best_loss - 1e-4):
+            best_loss = epoch_loss
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+            
+        # If 100 epochs pass without improvement, end training
+        if epochs_without_improvement >= 100:
+            return parameters
+        
+        # print loss on this epoch
+        print(f'Loss on epoch {epoch}: {epoch_loss}')
             
     return parameters
 
@@ -229,7 +250,7 @@ print(train_labels.shape)
 print(test_labels.shape)
 # Create and tweak our model parameters
 parameters = initialize_model_parameters(LAYER_SIZES)
-parameters = run_gradient_descent(train_data, train_labels, parameters, LAYER_SIZES, EPOCHS, BATCH_SIZE, LEARNING_RATE)
+parameters = run_gradient_descent(train_data, train_labels, parameters, LAYER_SIZES, MAX_EPOCHS, BATCH_SIZE, LEARNING_RATE, EARLY_STOP_EPOCH_COUNT)
 
 # Test the model on the test data
 predictions = predict(test_data, parameters, LAYER_SIZES)
