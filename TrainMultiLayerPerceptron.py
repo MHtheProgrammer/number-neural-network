@@ -36,7 +36,7 @@ def one_hot_encode(x: np.ndarray, num_classes: int):
 
 train_labels = one_hot_encode(train_labels, LAYER_SIZES[-1])
 
-# Convention is to use shape (feature_size, num_samples) for data 
+# Use shape (feature_size, num_samples) for data to make matrix multiplication easier
 train_data = train_data.T
 test_data = test_data.T
 # and shape (num_classes, num_samples) for labels
@@ -240,14 +240,41 @@ def export_parameters_to_file(parameters: dict, filepath: str):
     parameters_as_lists = {key: value.tolist() for key, value in parameters.items()}
     with open(filepath, 'w') as file:
         json.dump(parameters_as_lists, file)
+    
+def import_parameters_from_file(filepath: str) -> dict:
+    """
+    Reads the parameters from a JSON file and returns them as a dictionary.
+    """
+    with open(filepath, 'r') as file:
+        parameters_as_lists = json.load(file)
+    return {key: np.array(value) for key, value in parameters_as_lists.items()}
             
+def import_test_data_from_file(filepath: str) -> np.ndarray:
+    """
+    Reads the test data from a JSON file and returns it as a numpy array.
+    """
+    with open(filepath, 'r') as file:
+        data = json.load(file)
+    return np.array(data)
             
+def export_training_data_to_file(data: np.ndarray, labels: np.ndarray, filepath: str):
+    """
+    Exports training data and labels to a JSON file.
+    """
+    with open(filepath, 'w') as file:
+        json.dump({
+            'data': data.tolist(),
+            'labels': np.argmax(labels, 1).tolist()}, file)
 # ================ RUN THE TRAINING ================
 
+# Training model
+
+# Debugging purposes
 print(train_data.shape)
 print(test_data.shape)
 print(train_labels.shape)
 print(test_labels.shape)
+'''
 # Create and tweak our model parameters
 parameters = initialize_model_parameters(LAYER_SIZES)
 parameters = run_gradient_descent(train_data, train_labels, parameters, LAYER_SIZES, MAX_EPOCHS, BATCH_SIZE, LEARNING_RATE, EARLY_STOP_EPOCH_COUNT)
@@ -259,3 +286,18 @@ print(f'Model Accuracy: {accuracy}')
 
 # Save the model to file
 export_parameters_to_file(parameters, EXPORT_FILE_PATH)
+'''
+
+# Predicting on a test sample with imported parameters
+
+imported_parameters = import_parameters_from_file("09547_accuracy_parameters.json")
+for key, value in imported_parameters.items():
+    print(f'{key}: {value.shape}')  # Print shapes of imported parameters for debugging
+imported_test_sample = import_test_data_from_file("test_sample.json").T.astype('float32') /255
+print(imported_test_sample.shape)
+prediction = predict(imported_test_sample, imported_parameters, LAYER_SIZES)
+print(f'Prediction for the test sample: {prediction}')
+
+
+# Exporting training data to file
+# export_training_data_to_file(test_data.T[:100], one_hot_encode(test_labels.T[:100], LAYER_SIZES[-1]), "training_data.json")
